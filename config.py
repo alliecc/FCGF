@@ -94,9 +94,9 @@ misc_arg.add_argument('--weights', type=str, default=None)
 misc_arg.add_argument('--weights_dir', type=str, default=None)
 misc_arg.add_argument('--resume', type=str, default=None)
 misc_arg.add_argument('--resume_dir', type=str, default=None)
-misc_arg.add_argument('--train_num_thread', type=int, default=2)
-misc_arg.add_argument('--val_num_thread', type=int, default=1)
-misc_arg.add_argument('--test_num_thread', type=int, default=2)
+misc_arg.add_argument('--train_num_thread', type=int, default=8)#2)
+misc_arg.add_argument('--val_num_thread', type=int, default=8)
+misc_arg.add_argument('--test_num_thread', type=int, default=8)#2)
 misc_arg.add_argument('--fast_validation', type=str2bool, default=False)
 misc_arg.add_argument(
     '--nn_max_n',
@@ -112,12 +112,26 @@ data_arg.add_argument(
     '--threed_match_dir', type=str, default="/home/chrischoy/datasets/FCGF/threedmatch")
 data_arg.add_argument(
     '--kitti_root', type=str, default="/home/chrischoy/datasets/FCGF/kitti/")
+
 data_arg.add_argument(
     '--kitti_max_time_diff',
     type=int,
     default=3,
     help='max time difference between pairs (non inclusive)')
+
 data_arg.add_argument('--kitti_date', type=str, default='2011_09_26')
+
+
+#arguments for KITTI map dataset
+#for kitti ground truth poses (optimized by loop-closing SLAM)
+data_arg.add_argument(
+    '--path_cmrdata', type=str, default="/home/allie/dataset/cmr_original") 
+data_arg.add_argument(
+    '--depth_max', type=float, default=50) 
+data_arg.add_argument(
+    '--num_min_map_points', type=int, default=2e4) 
+
+
 
 
 def get_config():

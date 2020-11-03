@@ -18,10 +18,42 @@ import lib.transforms as t
 import MinkowskiEngine as ME
 
 import open3d as o3d
+import pickle
 
 kitti_cache = {}
 kitti_icp_cache = {}
 
+eps = 1e-10
+import csv
+def read_csv_file(path_file):
+    lines = []
+    with open(path_file, "r") as f:
+        reader = csv.reader(f, delimiter="\t")
+        for i, line in enumerate(reader):
+            if i >= 1:
+                lines.append(np.asarray(line[0].split(',')[1:]).astype('float'))
+    return lines
+
+
+def pred_to_matrix_np(pred):
+
+    cam_T = np.tile(np.eye(4)[np.newaxis,:,:],[pred.shape[0], 1, 1])
+    cam_T[:,0:3, 3] = pred[:, 0:3]
+    s = np.tile(np.linalg.norm(pred[:,3:], axis=1)[:,np.newaxis],[1,4])
+
+    q = pred[:,3:] / (s+eps)
+
+    cam_T[:,0,0] = 1- 2*s[:,0]*(q[:,2]**2 + q[:,3]**2)
+    cam_T[:,0,1] = 2   *s[:,0]*(q[:,1] * q[:,2] - q[:,3] * q[:,0])
+    cam_T[:,0,2] = 2   *s[:,0]*(q[:,1] * q[:,3] + q[:,2] * q[:,0])
+    cam_T[:,1,0] = 2   *s[:,0]*(q[:,1]*q[:,2] + q[:,3]*q[:,0])
+    cam_T[:,1,1] = 1- 2*s[:,0]*(q[:,1]**2 + q[:,3]**2)
+    cam_T[:,1,2] = 2   *s[:,0]*(q[:,2] * q[:,3] - q[:,1] * q[:,0])
+    cam_T[:,2,0] = 2   *s[:,0]*(q[:,1] * q[:,3] - q[:,2] * q[:,0])
+    cam_T[:,2,1] = 2   *s[:,0]*(q[:,2] * q[:,3] + q[:,1] * q[:,0])
+    cam_T[:,2,2] = 1 -2*s[:,0]*(q[:,1]**2 + q[:,2]**2)
+
+    return cam_T
 
 def collate_pair_fn(list_data):
   xyz0, xyz1, coords0, coords1, feats0, feats1, matching_inds, trans = list(
@@ -48,7 +80,6 @@ def collate_pair_fn(list_data):
     xyz_batch1.append(to_tensor(xyz1[batch_id]))
 
     trans_batch.append(to_tensor(trans[batch_id]))
-
     matching_inds_batch.append(
         torch.from_numpy(np.array(matching_inds[batch_id]) + curr_start_inds))
     len_batch.append([N0, N1])
@@ -632,8 +663,231 @@ class ThreeDMatchPairDataset(IndoorPairDataset):
       'test': './config/test_3dmatch.txt'
   }
 
+class KITTIMapDataset(PairDataset):
+    AUGMENT = None
+    DATA_FILES = {
+        'train': './config/train_kitti_map.txt', #log ids
+        'val': './config/val_kitti_map.txt',
+        'test': './config/test_kitti_map.txt'
+    }
+    TEST_RANDOM_ROTATION = False
+    IS_ODOMETRY = True
+    #MAX_TIME_DIFF = 3
 
-ALL_DATASETS = [ThreeDMatchPairDataset, KITTIPairDataset, KITTINMPairDataset]
+    def __init__(self,
+               phase,
+               transform=None,
+               random_rotation=True,
+               random_scale=True,
+               manual_seed=False,
+               config=None):
+
+
+    #(self, root, split, config, input_threads=8, first_subsampling_dl=0.30):#, load_test=False):
+        
+        PairDataset.__init__(self, phase, transform, random_rotation, random_scale,
+                         manual_seed, config)
+
+        self.root = root = os.path.join(config.kitti_root, 'dataset')
+        self.split = phase
+        self.config = config
+
+        self.path_map_dict = os.path.join(root, "kitti_map_files_d3feat_%s.pkl" % self.split)
+        self.read_map_data()
+        self.prepare_kitti_ply()#split=split)
+       
+
+    def __len__(self):
+        return self.num
+
+    def read_map_data(self):
+        if os.path.exists(self.path_map_dict):
+            with open(self.path_map_dict, 'rb') as f:
+                self.dict_maps = pickle.load(f)
+            return 
+
+
+        subset_names = open(self.DATA_FILES[self.split]).read().split()
+        self.dict_maps = {}
+        for id_log in subset_names:
+            path_map = os.path.join(self.root, "kitti_maps_cmr_new", "map-%02d_0.05.ply" % (int(id_log)))
+            print("Load map : ", path_map)
+            pcd = open3d.io.read_point_cloud(path_map)
+            pcd = pcd.voxel_down_sample(self.config.first_subsampling_dl)
+            pcd, ind = pcd.remove_radius_outlier(nb_points=7, radius=self.config.first_subsampling_dl*2)
+            self.dict_maps[id_log] = torch.Tensor(np.asarray(pcd.points))#.to(self.config.device)
+
+
+        with open(self.path_map_dict, 'wb') as f: 
+            print('Saving map file to ', self.path_map_dict)
+            pickle.dump(self.dict_maps, f)
+            print('Saved!')    
+
+    def get_local_map(self,T_lidar, drive):#, force_select_points=False):
+        dist = torch.sqrt(((self.dict_maps[drive] - T_lidar[0:3,3])**2).sum(axis=1))
+        ind_valid_local = dist < self.config.depth_max
+
+        return self.dict_maps[drive][ind_valid_local]
+
+            
+    def prepare_kitti_ply(self):#, split='train'):
+        #max_time_diff = self.MAX_TIME_DIFF
+        subset_names = open(self.DATA_FILES[self.split]).read().split()
+        self.all_pos = []
+        for dirname in subset_names:
+            drive_id = int(dirname)
+            fnames = glob.glob(self.root + '/sequences/%02d/velodyne/*.bin' % drive_id)
+
+            assert len(fnames) > 0, f"Make sure that the path {self.root} has data {dirname}"
+            inames = sorted([int(os.path.split(fname)[-1][:-4]) for fname in fnames])
+            path_poses = os.path.join(self.config.path_cmrdata, self.split, "kitti-%02d.csv" % drive_id)
+            list_gt_poses = read_csv_file(path_poses)
+
+            for i in range(0,len(inames),2):# curr_time in inames:
+                
+
+                T = pred_to_matrix_np(np.asarray(list_gt_poses[i][np.newaxis,[0,1,2,6,3,4,5]]))[0]
+                xyz0 = self.get_local_map(T, dirname)
+
+                #use the local map as the source
+                T = np.linalg.inv(T) 
+                if xyz0.shape[0] < self.config.num_min_map_points:
+                    continue
+                
+                self.files.append((drive_id, inames[i]))#, next_time))
+                self.all_pos.append( torch.Tensor(T))#.to(self.config.device))
+        self.num = len(self.files)
+
+    def __getitem__(self,idx):# split, idx):
+        drive = self.files[idx][0]
+        #t0, t1 = self.files[self.split][idx][1], self.files[self.split][idx][2]
+
+        #LiDAR is the target
+        fname1 = self._get_velodyne_fn(drive,  self.files[idx][1])
+        xyzr1 = np.fromfile(fname1, dtype=np.float32).reshape(-1, 4) 
+        xyz1 = xyzr1[:, :3]
+        
+        #map is the source
+        xyz0 = self.get_local_map( np.linalg.inv(self.all_pos[idx]), str(drive))
+        trans = self.all_pos[idx]# M2
+
+        matching_search_voxel_size = self.matching_search_voxel_size
+        if self.random_scale and random.random() < 0.95:
+            scale = self.min_scale + \
+                (self.max_scale - self.min_scale) * random.random()
+            matching_search_voxel_size *= scale
+            xyz0 = scale * xyz0
+            xyz1 = scale * xyz1
+
+        # Voxelization
+        xyz0_th = xyz0#torch.from_numpy(xyz0)
+        xyz1_th = torch.from_numpy(xyz1)
+    
+        sel0 = ME.utils.sparse_quantize(xyz0_th / self.voxel_size, return_index=True)
+        sel1 = ME.utils.sparse_quantize(xyz1_th / self.voxel_size, return_index=True)
+    
+        # Make point clouds using voxelized points
+        pcd0 = make_open3d_point_cloud(xyz0[sel0])
+        pcd1 = make_open3d_point_cloud(xyz1[sel1])
+    
+        # Get matches
+        matches = get_matching_indices(pcd0, pcd1, trans, matching_search_voxel_size)
+        #if len(matches) < 1000:
+        #  raise ValueError(f"{drive}, {t0}, {t1}")
+        #matches = np.array(matches)
+
+
+        # Get features
+        npts0 = len(sel0)
+        npts1 = len(sel1)
+    
+        feats_train0, feats_train1 = [], []
+    
+        unique_xyz0_th = xyz0_th[sel0]
+        unique_xyz1_th = xyz1_th[sel1]
+    
+        feats_train0.append(torch.ones((npts0, 1)))
+        feats_train1.append(torch.ones((npts1, 1)))
+    
+        feats0 = torch.cat(feats_train0, 1)
+        feats1 = torch.cat(feats_train1, 1)
+    
+        coords0 = torch.floor(unique_xyz0_th / self.voxel_size)
+        coords1 = torch.floor(unique_xyz1_th / self.voxel_size)
+
+        #print("single batch = ")
+        #print(coords0.shape)
+        #print(coords1.shape)
+        #print(len(matches) )        
+        if False:#len(matches) < 10:#coords0.shape[0] < 10 or coords1.shape[0] < 10:
+            #print("matches shape = ", matches.shape)
+
+            print(coords0)
+#    
+#    
+            pcd_target = o3d.geometry.PointCloud()
+            pcd_target.points = o3d.utility.Vector3dVector(coords0)
+            o3d.io.write_point_cloud("coords0_before_%d.ply" % idx , pcd_target) 
+#    
+            pcd_target = o3d.geometry.PointCloud()
+            pcd_target.points = o3d.utility.Vector3dVector(coords1)
+            o3d.io.write_point_cloud("coords1_before_%d.ply" % idx, pcd_target) 
+#    
+    
+            pcd_target = o3d.geometry.PointCloud()
+            pcd_target.points = o3d.utility.Vector3dVector(unique_xyz1_th)
+            o3d.io.write_point_cloud("unique_xyz1_th_%d.ply"% idx , pcd_target) 
+#    
+    
+            pcd_target = o3d.geometry.PointCloud()
+            pcd_target.points = o3d.utility.Vector3dVector(unique_xyz0_th)
+            o3d.io.write_point_cloud("unique_xyz0_th_%d.ply"% idx , pcd_target)         
+#    
+            pcd_target = o3d.geometry.PointCloud()
+            pcd_target.points = o3d.utility.Vector3dVector(unique_xyz0_th)
+            pcd_target.transform(trans)
+    
+            o3d.io.write_point_cloud("unique_xyz0_th_trans_%d.ply" % idx, pcd_target) 
+#    
+
+            #import pdb; pdb.set_trace()
+            #pcd_target = o3d.geometry.PointCloud()
+            #pcd_target.points = o3d.utility.Vector3dVector(coords0)
+            #o3d.io.write_point_cloud("coords0.ply" , pcd_target) 
+#    
+            #pcd_target = o3d.geometry.PointCloud()
+            #pcd_target.points = o3d.utility.Vector3dVector(coords1)
+            #o3d.io.write_point_cloud("coords1.ply" , pcd_target) 
+
+
+        if self.transform: #add noises to the point clouds
+          coords0, feats0 = self.transform(coords0, feats0)
+          coords1, feats1 = self.transform(coords1, feats1)
+        
+
+        return (unique_xyz0_th.float(), unique_xyz1_th.float(), coords0.int(),
+                coords1.int(), feats0.float(), feats1.float(), matches, trans)
+
+    def _get_velodyne_fn(self, drive, t):
+        if self.IS_ODOMETRY:
+            fname = self.root + '/sequences/%02d/velodyne/%06d.bin' % (drive, t)
+        else:
+            fname = self.root + \
+                    '/' + self.date + '_drive_%04d_sync/velodyne_points/data/%010d.bin' % (
+                        drive, t)
+        return fname
+
+    #def get_position_transform(self, pos0, pos1, invert=False):
+    #    T0 = self.pos_transform(pos0)
+    #    T1 = self.pos_transform(pos1)
+    #    return (np.dot(T1, np.linalg.inv(T0)).T if not invert else np.dot(
+    #        np.linalg.inv(T1), T0).T)
+#
+
+
+
+
+ALL_DATASETS = [ThreeDMatchPairDataset, KITTIPairDataset, KITTINMPairDataset, KITTIMapDataset]
 dataset_str_mapping = {d.__name__: d for d in ALL_DATASETS}
 
 
