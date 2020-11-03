@@ -1501,3 +1501,4 @@ Tue Nov  3 01:04:07 2020
   "please use `get_last_lr()`.", UserWarning)
 11/03 01:20:47  Epoch: 1, LR: [0.1]
 11/03 01:21:22 Train Epoch: 1 [0/477], Current Loss: 1.704e+00 Pos: 0.724 Neg: 0.980	Data time: 26.4148, Train time: 8.3080, Iter time: 34.7228
+11/03 01:26:58 Train Epoch: 1 [40/477], Current Loss: 1.344e+00 Pos: 0.288 Neg: 1.057	Data time: 0.1094, Train time: 8.2677, Iter time: 8.3771
