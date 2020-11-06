@@ -692,7 +692,7 @@ class KITTIMapDataset(PairDataset):
         self.split = phase
         self.config = config
 
-        self.path_map_dict = os.path.join(root, "kitti_map_files_d3feat_%s.pkl" % self.split)
+        self.path_map_dict = os.path.join(root, "kitti_map_files_d3feat_%s_fcgf.pkl" % self.split)
         self.read_map_data()
         self.prepare_kitti_ply()#split=split)
        
@@ -712,10 +712,10 @@ class KITTIMapDataset(PairDataset):
         for id_log in subset_names:
             path_map = os.path.join(self.root, "kitti_maps_cmr_new", "map-%02d_0.05.ply" % (int(id_log)))
             print("Load map : ", path_map)
-            pcd = open3d.io.read_point_cloud(path_map)
-            pcd = pcd.voxel_down_sample(self.config.first_subsampling_dl)
-            pcd, ind = pcd.remove_radius_outlier(nb_points=7, radius=self.config.first_subsampling_dl*2)
-            self.dict_maps[id_log] = torch.Tensor(np.asarray(pcd.points))#.to(self.config.device)
+            pcd = o3d.io.read_point_cloud(path_map)
+            pcd = pcd.voxel_down_sample(self.config.voxel_size)
+            pcd, ind = pcd.remove_radius_outlier(nb_points=7, radius=self.config.voxel_size*2)
+            self.dict_maps[id_log] = np.asarray(pcd.points)#torch.Tensor(np.asarray(pcd.points))#.to(self.config.device)
 
 
         with open(self.path_map_dict, 'wb') as f: 
@@ -724,7 +724,7 @@ class KITTIMapDataset(PairDataset):
             print('Saved!')    
 
     def get_local_map(self,T_lidar, drive):#, force_select_points=False):
-        dist = torch.sqrt(((self.dict_maps[drive] - T_lidar[0:3,3])**2).sum(axis=1))
+        dist = np.sqrt(((self.dict_maps[drive] - T_lidar[0:3,3])**2).sum(axis=1))
         ind_valid_local = dist < self.config.depth_max
 
         return self.dict_maps[drive][ind_valid_local]
@@ -780,31 +780,47 @@ class KITTIMapDataset(PairDataset):
             xyz1 = scale * xyz1
 
         # Voxelization
-        xyz0_th = xyz0#torch.from_numpy(xyz0)
+        xyz0_th = torch.from_numpy(xyz0)#xyz0#torch.from_numpy(xyz0)
         xyz1_th = torch.from_numpy(xyz1)
     
         sel0 = ME.utils.sparse_quantize(xyz0_th / self.voxel_size, return_index=True)
         sel1 = ME.utils.sparse_quantize(xyz1_th / self.voxel_size, return_index=True)
     
         # Make point clouds using voxelized points
-        pcd0 = make_open3d_point_cloud(xyz0[sel0])
-        pcd1 = make_open3d_point_cloud(xyz1[sel1])
+        #pcd0 = make_open3d_point_cloud(xyz0[sel0])
+        #pcd1 = make_open3d_point_cloud(xyz1[sel1])
+
+        import copy
+        pcd0_trans = make_open3d_point_cloud(xyz0[sel0])
+        pcd0_trans.transform(trans)
+        xyz0_sel_trans = np.asarray(pcd0_trans.points)
+        h_ground = -1.5
+        ind_0 = xyz0_sel_trans[:,2] > h_ground
+        ind_1 = xyz1[sel1][:,2] > h_ground
+
+        pcd0 = make_open3d_point_cloud(xyz0[sel0][ind_0])
+        pcd1 = make_open3d_point_cloud(xyz1[sel1][ind_1])
+    
+        #xyz0_th = torch.from_numpy(xyz0)#xyz0#torch.from_numpy(xyz0)
+        #xyz1_th = torch.from_numpy(xyz1)
     
         # Get matches
         matches = get_matching_indices(pcd0, pcd1, trans, matching_search_voxel_size)
-        #if len(matches) < 1000:
-        #  raise ValueError(f"{drive}, {t0}, {t1}")
+        if len(matches) < 1000:
+            raise ValueError(f"{drive}, {idx}")
         #matches = np.array(matches)
 
 
         # Get features
-        npts0 = len(sel0)
-        npts1 = len(sel1)
-    
+
         feats_train0, feats_train1 = [], []
     
-        unique_xyz0_th = xyz0_th[sel0]
-        unique_xyz1_th = xyz1_th[sel1]
+        unique_xyz0_th = xyz0_th[sel0][ind_0]
+        unique_xyz1_th = xyz1_th[sel1][ind_1]
+        npts0 = unique_xyz0_th.shape[0]
+        npts1 = unique_xyz1_th.shape[0]
+    
+
     
         feats_train0.append(torch.ones((npts0, 1)))
         feats_train1.append(torch.ones((npts1, 1)))
@@ -818,8 +834,9 @@ class KITTIMapDataset(PairDataset):
         #print("single batch = ")
         #print(coords0.shape)
         #print(coords1.shape)
-        #print(len(matches) )        
+           
         if False:#len(matches) < 10:#coords0.shape[0] < 10 or coords1.shape[0] < 10:
+            print("num matches = ", len(matches) )     
             #print("matches shape = ", matches.shape)
 
             print(coords0)
@@ -850,7 +867,7 @@ class KITTIMapDataset(PairDataset):
             o3d.io.write_point_cloud("unique_xyz0_th_trans_%d.ply" % idx, pcd_target) 
 #    
 
-            #import pdb; pdb.set_trace()
+            import pdb; pdb.set_trace()
             #pcd_target = o3d.geometry.PointCloud()
             #pcd_target.points = o3d.utility.Vector3dVector(coords0)
             #o3d.io.write_point_cloud("coords0.ply" , pcd_target) 

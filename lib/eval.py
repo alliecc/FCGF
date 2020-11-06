@@ -17,6 +17,7 @@ def find_nn_cpu(feat0, feat1, return_distance=False):
 
 def find_nn_gpu(F0, F1, nn_max_n=-1, return_distance=False, dist_type='SquareL2'):
   # Too much memory if F0 or F1 large. Divide the F0
+
   if nn_max_n > 1:
     N = len(F0)
     C = int(np.ceil(N / nn_max_n))
