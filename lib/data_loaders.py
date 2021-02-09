@@ -19,7 +19,10 @@ import MinkowskiEngine as ME
 
 import open3d as o3d
 import pickle
+import sys
+import importlib
 
+from ext.benchmark_tools.datasets.datasets import PairwiseDataset
 kitti_cache = {}
 kitti_icp_cache = {}
 
@@ -663,7 +666,225 @@ class ThreeDMatchPairDataset(IndoorPairDataset):
       'test': './config/test_3dmatch.txt'
   }
 
-class KITTIMapDataset(PairDataset):
+
+class KITTIMapDataset(PairwiseDataset): #PairwiseDataset from the benchmark coe
+    AUGMENT = None
+    DATA_FILES = {
+        'train': './config/train_kitti_map.txt', #log ids
+        'val': './config/val_kitti_map.txt',
+        'test': './config/test_kitti_map.txt'
+    }
+    TEST_RANDOM_ROTATION = False
+    IS_ODOMETRY = True
+    #MAX_TIME_DIFF = 3
+
+    def __init__(self, split, cfg,
+               phase,
+               transform=None,
+               random_rotation=True,
+               random_scale=True,
+               manual_seed=False,
+               config=None):
+
+        self.phase = phase
+        self.files = []
+        self.data_objects = []
+        self.transform = transform
+        self.voxel_size = config.voxel_size
+        self.matching_search_voxel_size = \
+            config.voxel_size * config.positive_pair_search_voxel_size_multiplier
+    
+        self.random_scale = random_scale
+        self.min_scale = config.min_scale
+        self.max_scale = config.max_scale
+        self.random_rotation = random_rotation
+        self.rotation_range = config.rotation_range
+        self.randg = np.random.RandomState()
+        if manual_seed:
+          self.reset_seed()
+
+
+    #(self, root, split, config, input_threads=8, first_subsampling_dl=0.30):#, load_test=False):
+        
+        #PairDataset.__init__(self, phase, transform, random_rotation, random_scale,
+        #                 manual_seed, config)
+
+        self.root = root = os.path.join(cfg.path_dataset, 'dataset')
+        self.split = phase
+        self.cfg = cfg
+
+        self.path_map_dict = os.path.join(root, "kitti_map_files_d3feat_%s_fcgf.pkl" % self.split)
+        #self.read_map_data()
+        #self.prepare_kitti_ply()#split=split)
+        self.read_data()
+
+    def reset_seed(self, seed=0):
+      logging.info(f"Resetting the data loader seed to {seed}")
+      self.randg.seed(seed)
+  
+    def apply_transform(self, pts, trans):
+      R = trans[:3, :3]
+      T = trans[:3, 3]
+      pts = pts @ R.T + T
+      return pts
+
+    def __len__(self):
+        return self.length
+
+    def __getitem__(self,idx):# split, idx):
+        drive = self.data["id_log"][idx]
+        #t0, t1 = self.files[self.split][idx][1], self.files[self.split][idx][2]
+
+        #LiDAR is the target
+        
+        xyz1 = self.load_kitti_scan(idx)
+        #map is the source
+        xyz0 = self.get_local_map( self.data["T_map"][idx],self.data["T_map"][idx], str(drive))
+        trans = torch.Tensor(np.linalg.inv(self.data["T_map"][idx]))#.to(self.config.device)# # M2
+
+        matching_search_voxel_size = self.matching_search_voxel_size
+        #if self.random_scale and random.random() < 0.95:
+        #    scale = self.min_scale + \
+        #        (self.max_scale - self.min_scale) * random.random()
+        #    matching_search_voxel_size *= scale
+        #    xyz0 = scale * xyz0
+        #    xyz1 = scale * xyz1
+#
+        # Voxelization
+        xyz0_th = torch.from_numpy(xyz0)#xyz0#torch.from_numpy(xyz0)
+        xyz1_th = torch.from_numpy(xyz1)
+    
+        sel0 = ME.utils.sparse_quantize(xyz0_th / self.voxel_size, return_index=True)[1]
+        sel1 = ME.utils.sparse_quantize(xyz1_th / self.voxel_size, return_index=True)[1]
+    
+        # Make point clouds using voxelized points
+        #pcd0 = make_open3d_point_cloud(xyz0[sel0])
+        #pcd1 = make_open3d_point_cloud(xyz1[sel1])
+
+
+        import copy
+        pcd0_trans = make_open3d_point_cloud(xyz0[sel0])
+        
+        pcd0_trans.transform(trans)
+        xyz0_sel_trans = np.asarray(pcd0_trans.points)
+
+        pcd1 = make_open3d_point_cloud(xyz1[sel1])
+        pcd0 = make_open3d_point_cloud(xyz0[sel0])
+
+        #h_ground = -1.5
+        #ind_0 = xyz0_sel_trans[:,2] > h_ground
+        #ind_1 = xyz1[sel1][:,2] > h_ground
+        #pcd0 = make_open3d_point_cloud(xyz0[sel0][ind_0])
+        #pcd1 = make_open3d_point_cloud(xyz1[sel1][ind_1])
+    
+        #xyz0_th = torch.from_numpy(xyz0)#xyz0#torch.from_numpy(xyz0)
+        #xyz1_th = torch.from_numpy(xyz1)
+    
+        # Get matches
+        matches = get_matching_indices(pcd0, pcd1, trans, matching_search_voxel_size)
+        #if len(matches) < 500:
+        #    print(len(matches))
+        #    raise ValueError(f"{drive}, {idx}")
+        #matches = np.array(matches)
+
+
+        # Get features
+
+        feats_train0, feats_train1 = [], []
+    
+        unique_xyz0_th = xyz0_th[sel0]#[ind_0]
+        unique_xyz1_th = xyz1_th[sel1]#[ind_1]
+        npts0 = unique_xyz0_th.shape[0]
+        npts1 = unique_xyz1_th.shape[0]
+    
+
+    
+        feats_train0.append(torch.ones((npts0, 1)))
+        feats_train1.append(torch.ones((npts1, 1)))
+    
+        feats0 = torch.cat(feats_train0, 1)
+        feats1 = torch.cat(feats_train1, 1)
+    
+        coords0 = torch.floor(unique_xyz0_th / self.voxel_size)
+        coords1 = torch.floor(unique_xyz1_th / self.voxel_size)
+
+        #print("single batch = ")
+        #print(coords0.shape)
+        #print(coords1.shape)
+           
+        if len(matches) < 300:#idx == 113:#len(matches) < 10:#coords0.shape[0] <
+        # 10 or
+        # coords1.shape
+        # [0]
+        # <
+        # 10:
+            print("num matches = ", len(matches) )     
+            #print("matches shape = ", matches.shape)
+
+            print(coords0)
+#    
+#    
+            pcd_target = o3d.geometry.PointCloud()
+            pcd_target.points = o3d.utility.Vector3dVector(coords0)
+            o3d.io.write_point_cloud("coords0_before_%d.ply" % idx , pcd_target) 
+#    
+            pcd_target = o3d.geometry.PointCloud()
+            pcd_target.points = o3d.utility.Vector3dVector(coords1)
+            o3d.io.write_point_cloud("coords1_before_%d.ply" % idx, pcd_target) 
+#    
+    
+            pcd_target = o3d.geometry.PointCloud()
+            pcd_target.points = o3d.utility.Vector3dVector(unique_xyz1_th)
+            o3d.io.write_point_cloud("unique_xyz1_th_%d.ply"% idx , pcd_target) 
+#    
+    
+            pcd_target = o3d.geometry.PointCloud()
+            pcd_target.points = o3d.utility.Vector3dVector(unique_xyz0_th)
+            o3d.io.write_point_cloud("unique_xyz0_th_%d.ply"% idx , pcd_target)         
+#    
+            pcd_target = o3d.geometry.PointCloud()
+            pcd_target.points = o3d.utility.Vector3dVector(unique_xyz0_th)
+            pcd_target.transform(trans)
+    
+            o3d.io.write_point_cloud("unique_xyz0_th_trans_%d.ply" % idx, pcd_target) 
+#    
+
+            import pdb; pdb.set_trace()
+            #pcd_target = o3d.geometry.PointCloud()
+            #pcd_target.points = o3d.utility.Vector3dVector(coords0)
+            #o3d.io.write_point_cloud("coords0.ply" , pcd_target) 
+#    
+            #pcd_target = o3d.geometry.PointCloud()
+            #pcd_target.points = o3d.utility.Vector3dVector(coords1)
+            #o3d.io.write_point_cloud("coords1.ply" , pcd_target) 
+
+
+        if self.transform: #add noises to the point clouds
+          coords0, feats0 = self.transform(coords0, feats0)
+          coords1, feats1 = self.transform(coords1, feats1)
+        
+
+        return (unique_xyz0_th.float(), unique_xyz1_th.float(), coords0.int(),
+                coords1.int(), feats0.float(), feats1.float(), matches, trans)
+
+    def _get_velodyne_fn(self, drive, t):
+        if self.IS_ODOMETRY:
+            fname = self.root + '/sequences/%02d/velodyne/%06d.bin' % (drive, t)
+        else:
+            fname = self.root + \
+                    '/' + self.date + '_drive_%04d_sync/velodyne_points/data/%010d.bin' % (
+                        drive, t)
+        return fname
+
+    #def get_position_transform(self, pos0, pos1, invert=False):
+    #    T0 = self.pos_transform(pos0)
+    #    T1 = self.pos_transform(pos1)
+    #    return (np.dot(T1, np.linalg.inv(T0)).T if not invert else np.dot(
+    #        np.linalg.inv(T1), T0).T)
+#
+
+
+class KITTIMapDatasetOld(PairDataset):
     AUGMENT = None
     DATA_FILES = {
         'train': './config/train_kitti_map.txt', #log ids
@@ -783,8 +1004,8 @@ class KITTIMapDataset(PairDataset):
         xyz0_th = torch.from_numpy(xyz0)#xyz0#torch.from_numpy(xyz0)
         xyz1_th = torch.from_numpy(xyz1)
     
-        sel0 = ME.utils.sparse_quantize(xyz0_th / self.voxel_size, return_index=True)
-        sel1 = ME.utils.sparse_quantize(xyz1_th / self.voxel_size, return_index=True)
+        sel0 = ME.utils.sparse_quantize(xyz0_th / self.voxel_size, return_index=True)[1]
+        sel1 = ME.utils.sparse_quantize(xyz1_th / self.voxel_size, return_index=True)[1]
     
         # Make point clouds using voxelized points
         #pcd0 = make_open3d_point_cloud(xyz0[sel0])
@@ -835,7 +1056,8 @@ class KITTIMapDataset(PairDataset):
         #print(coords0.shape)
         #print(coords1.shape)
            
-        if False:#len(matches) < 10:#coords0.shape[0] < 10 or coords1.shape[0] < 10:
+        if True:#len(matches) < 10:#coords0.shape[0] < 10 or coords1.shape[0] <
+        # 10:
             print("num matches = ", len(matches) )     
             #print("matches shape = ", matches.shape)
 
@@ -927,12 +1149,27 @@ def make_data_loader(config, phase, batch_size, num_threads=0, shuffle=None):
     use_random_scale = config.use_random_scale
     transforms += [t.Jitter()]
 
-  dset = Dataset(
-      phase,
-      transform=t.Compose(transforms),
-      random_scale=use_random_scale,
-      random_rotation=use_random_rotation,
-      config=config)
+
+  if config.dataset == "KITTIMapDataset":
+    #import sys
+    import importlib
+    
+    split = phase
+    cfg = importlib.import_module("ext.benchmark_tools.configs.config")
+    dset = Dataset( split, cfg,
+        phase,
+        transform=t.Compose(transforms),
+        random_scale=use_random_scale,
+        random_rotation=use_random_rotation,
+        config=config)    
+  
+  else:
+    dset = Dataset(
+        phase,
+        transform=t.Compose(transforms),
+        random_scale=use_random_scale,
+        random_rotation=use_random_rotation,
+        config=config)
 
   loader = torch.utils.data.DataLoader(
       dset,

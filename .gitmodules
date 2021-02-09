@@ -1,0 +1,3 @@
+[submodule "ext/benchmark_tools"]
+	path = ext/benchmark_tools
+	url = https://github.com/alliecc/benchmark_tools

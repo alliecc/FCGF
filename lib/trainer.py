@@ -234,12 +234,12 @@ class ContrastiveLossTrainer(AlignmentTrainer):
         # pairs consist of (xyz1 index, xyz0 index)
         sinput0 = ME.SparseTensor(
             input_dict['sinput0_F'].to(self.device),
-            coords=input_dict['sinput0_C'].to(self.device).type(torch.float))
+            coordinates=input_dict['sinput0_C'].to(self.device).type(torch.float))
         F0 = self.model(sinput0).F
 
         sinput1 = ME.SparseTensor(
             input_dict['sinput1_F'].to(self.device),
-            coords=input_dict['sinput1_C'].to(self.device).type(torch.float))
+            coordinates=input_dict['sinput1_C'].to(self.device).type(torch.float))
         F1 = self.model(sinput1).F
 
         N0, N1 = len(sinput0), len(sinput1)
@@ -320,13 +320,13 @@ class ContrastiveLossTrainer(AlignmentTrainer):
       coords=input_dict['sinput0_C'].to(self.device)
       sinput0 = ME.SparseTensor(
           input_dict['sinput0_F'].to(self.device),
-          coords=input_dict['sinput0_C'].to(self.device).type(torch.float))
+          coordinates=input_dict['sinput0_C'].to(self.device).type(torch.float))
 
       F0 = self.model(sinput0).F
 
       sinput1 = ME.SparseTensor(
           input_dict['sinput1_F'].to(self.device),
-          coords=input_dict['sinput1_C'].to(self.device).type(torch.float))
+          coordinates=input_dict['sinput1_C'].to(self.device).type(torch.float))
       F1 = self.model(sinput1).F
       feat_timer.toc()
 
@@ -529,12 +529,13 @@ class HardestContrastiveLossTrainer(ContrastiveLossTrainer):
 
         sinput0 = ME.SparseTensor(
             input_dict['sinput0_F'].to(self.device),
-            coords=input_dict['sinput0_C'].to(self.device).type(torch.float))
+            coordinates=input_dict['sinput0_C'].to(self.device).type
+            (torch.float))
         F0 = self.model(sinput0).F
 
         sinput1 = ME.SparseTensor(
             input_dict['sinput1_F'].to(self.device),
-            coords=input_dict['sinput1_C'].to(self.device).type(torch.float))
+            coordinates=input_dict['sinput1_C'].to(self.device).type(torch.float))
 
         F1 = self.model(sinput1).F
         pos_pairs = input_dict['correspondences']
@@ -659,12 +660,12 @@ class TripletLossTrainer(ContrastiveLossTrainer):
         # pairs consist of (xyz1 index, xyz0 index)
         sinput0 = ME.SparseTensor(
             input_dict['sinput0_F'].to(self.device),
-            coords=input_dict['sinput0_C'].to(self.device).type(torch.float))
+            coordinates=input_dict['sinput0_C'].to(self.device).type(torch.float))
         F0 = self.model(sinput0).F
 
         sinput1 = ME.SparseTensor(
             input_dict['sinput1_F'].to(self.device),
-            coords=input_dict['sinput1_C'].to(self.device).type(torch.float))
+            coordinates=input_dict['sinput1_C'].to(self.device).type(torch.float))
         F1 = self.model(sinput1).F
 
         pos_pairs = input_dict['correspondences']
