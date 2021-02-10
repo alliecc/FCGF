@@ -139,6 +139,7 @@ class AlignmentTrainer:
 
         for k, v in val_dict.items():
           self.writer.add_scalar(f'val/{k}', v, epoch)
+          
         if self.best_val < val_dict[self.best_val_metric]:
           logging.info(
               f'Saving the best val model with {self.best_val_metric}: {val_dict[self.best_val_metric]}'
@@ -264,6 +265,7 @@ class ContrastiveLossTrainer(AlignmentTrainer):
         pos_loss_mean = pos_loss.mean() / iter_size
         neg_loss_mean = neg_loss.mean() / iter_size
 
+
         # Weighted loss
         loss = pos_loss_mean + self.neg_weight * neg_loss_mean
         loss.backward(
@@ -330,43 +332,6 @@ class ContrastiveLossTrainer(AlignmentTrainer):
       F1 = self.model(sinput1).F
       feat_timer.toc()
 
-      #import pdb; pdb.set_trace()
-      if False:
-
-          from sklearn.decomposition import PCA
-          import open3d as o3d
-          pc0 = o3d.geometry.PointCloud()
-          pc0.points = o3d.utility.Vector3dVector(xyz0.numpy())
-          pca = PCA(n_components=3)
-    
-          colors =   pca.fit_transform(torch.cat((F0, F1), axis=0).cpu().numpy())
-          colors -= colors.min()
-          colors /= colors.max()
-          pc0.colors = o3d.utility.Vector3dVector(colors[0:F0.shape[0]])
-    
-          o3d.io.write_point_cloud("pc0.ply" , pc0) 
-          pc0.transform(T_gt.numpy())
-          o3d.io.write_point_cloud("pc0_trans.ply" , pc0) 
-    
-          pc1 = o3d.geometry.PointCloud()
-          pc1.points = o3d.utility.Vector3dVector(xyz1.numpy())
-          pc1.colors = o3d.utility.Vector3dVector(colors[F0.shape[0]:])
-          o3d.io.write_point_cloud("pc1.ply" , pc1) 
-
-
-          ind_0 = input_dict['correspondences'][:,0].type(torch.long)
-          ind_1 = input_dict['correspondences'][:,1].type(torch.long)
-
-          pc1.points = o3d.utility.Vector3dVector(xyz1[ind_1].numpy())
-          pc1.colors = o3d.utility.Vector3dVector(colors[F0.shape[0]:][ind_1])
-          o3d.io.write_point_cloud("pc1_corr.ply" , pc1) 
-
-
-          pc0.points = o3d.utility.Vector3dVector(xyz0[ind_0].numpy())
-          pc0.colors = o3d.utility.Vector3dVector(colors[:F0.shape[0]][ind_0])
-          pc0.transform(T_gt.numpy())
-          o3d.io.write_point_cloud("pc0_trans_corr.ply" , pc0) 
-
 
 
 
@@ -374,6 +339,44 @@ class ContrastiveLossTrainer(AlignmentTrainer):
       xyz0, xyz1, T_gt = input_dict['pcd0'], input_dict['pcd1'], input_dict['T_gt']
       xyz0_corr, xyz1_corr = self.find_corr(xyz0, xyz1, F0, F1, subsample_size=5000)
 
+      if False:
+
+           from sklearn.decomposition import PCA
+           import open3d as o3d
+
+           pc0 = o3d.geometry.PointCloud()
+           pc0.points = o3d.utility.Vector3dVector(xyz0.numpy())
+           pca = PCA(n_components=3)
+     
+           colors =   pca.fit_transform(torch.cat((F0, F1), axis=0).cpu().numpy())
+           colors -= colors.min()
+           colors /= colors.max()
+           pc0.colors = o3d.utility.Vector3dVector(colors[0:F0.shape[0]])
+     
+           o3d.io.write_point_cloud("pc0.ply" , pc0) 
+           pc0.transform(T_gt.numpy())
+           o3d.io.write_point_cloud("pc0_trans.ply" , pc0) 
+     
+           pc1 = o3d.geometry.PointCloud()
+           pc1.points = o3d.utility.Vector3dVector(xyz1.numpy())
+           pc1.colors = o3d.utility.Vector3dVector(colors[F0.shape[0]:])
+           o3d.io.write_point_cloud("pc1.ply" , pc1) 
+ 
+ 
+           ind_0 = input_dict['correspondences'][:,0].type(torch.long)
+           ind_1 = input_dict['correspondences'][:,1].type(torch.long)
+ 
+           pc1.points = o3d.utility.Vector3dVector(xyz1[ind_1].numpy())
+           pc1.colors = o3d.utility.Vector3dVector(colors[F0.shape[0]:][ind_1])
+           o3d.io.write_point_cloud("pc1_corr.ply" , pc1) 
+ 
+ 
+           pc0.points = o3d.utility.Vector3dVector(xyz0[ind_0].numpy())
+           pc0.colors = o3d.utility.Vector3dVector(colors[:F0.shape[0]][ind_0])
+           pc0.transform(T_gt.numpy())
+           o3d.io.write_point_cloud("pc0_trans_corr.ply" , pc0) 
+           import pdb; pdb.set_trace()
+ 
 
 
       #pc0.points = o3d.utility.Vector3dVector(xyz0_corr.numpy())

@@ -812,7 +812,8 @@ class KITTIMapDataset(PairwiseDataset): #PairwiseDataset from the benchmark coe
         #print(coords0.shape)
         #print(coords1.shape)
            
-        if len(matches) < 300:#idx == 113:#len(matches) < 10:#coords0.shape[0] <
+        if len(matches) < 300:#idx == 113:#len(matches) <
+ # 10:#coords0.shape[0] <
         # 10 or
         # coords1.shape
         # [0]
@@ -1056,7 +1057,7 @@ class KITTIMapDatasetOld(PairDataset):
         #print(coords0.shape)
         #print(coords1.shape)
            
-        if True:#len(matches) < 10:#coords0.shape[0] < 10 or coords1.shape[0] <
+        if len(matches) < 10:#coords0.shape[0] < 10 or coords1.shape[0] <
         # 10:
             print("num matches = ", len(matches) )     
             #print("matches shape = ", matches.shape)

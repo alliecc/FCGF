@@ -65,10 +65,10 @@ trainer_arg.add_argument('--triplet_num_rand', type=int, default=1024)
 net_arg = add_argument_group('Network')
 net_arg.add_argument('--model', type=str, default='ResUNetBN2C')
 net_arg.add_argument('--model_n_out', type=int, default=32, help='Feature dimension')
-net_arg.add_argument('--conv1_kernel_size', type=int, default=7)
+net_arg.add_argument('--conv1_kernel_size', type=int, default=5)
 net_arg.add_argument('--normalize_feature', type=str2bool, default=False)
 net_arg.add_argument('--dist_type', type=str, default='L2')
-net_arg.add_argument('--best_val_metric', type=str, default='feat_match_ratio')
+net_arg.add_argument('--best_val_metric', type=str,default='loss')#'feat_match_ratio')
 
 # Optimizer arguments
 opt_arg = add_argument_group('Optimizer')
