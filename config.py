@@ -5,27 +5,29 @@ parser = argparse.ArgumentParser()
 
 
 def add_argument_group(name):
-  arg = parser.add_argument_group(name)
-  arg_lists.append(arg)
-  return arg
+    arg = parser.add_argument_group(name)
+    arg_lists.append(arg)
+    return arg
 
 
 def str2bool(v):
-  return v.lower() in ('true', '1')
+    return v.lower() in ('true', '1')
 
 
 logging_arg = add_argument_group('Logging')
 logging_arg.add_argument('--out_dir', type=str, default='outputs')
 
 trainer_arg = add_argument_group('Trainer')
-trainer_arg.add_argument('--trainer', type=str, default='HardestContrastiveLossTrainer')
+trainer_arg.add_argument('--trainer', type=str,
+                         default='HardestContrastiveLossTrainer')
 trainer_arg.add_argument('--save_freq_epoch', type=int, default=1)
 trainer_arg.add_argument('--batch_size', type=int, default=4)
 trainer_arg.add_argument('--val_batch_size', type=int, default=1)
 
 # Hard negative mining
 trainer_arg.add_argument('--use_hard_negative', type=str2bool, default=True)
-trainer_arg.add_argument('--hard_negative_sample_ratio', type=int, default=0.05)
+trainer_arg.add_argument(
+    '--hard_negative_sample_ratio', type=int, default=0.05)
 trainer_arg.add_argument('--hard_negative_max_num', type=int, default=3000)
 trainer_arg.add_argument('--num_pos_per_batch', type=int, default=1024)
 trainer_arg.add_argument('--num_hn_samples_per_batch', type=int, default=256)
@@ -64,11 +66,12 @@ trainer_arg.add_argument('--triplet_num_rand', type=int, default=1024)
 # dNetwork specific configurations
 net_arg = add_argument_group('Network')
 net_arg.add_argument('--model', type=str, default='ResUNetBN2C')
-net_arg.add_argument('--model_n_out', type=int, default=32, help='Feature dimension')
+net_arg.add_argument('--model_n_out', type=int,
+                     default=32, help='Feature dimension')
 net_arg.add_argument('--conv1_kernel_size', type=int, default=5)
 net_arg.add_argument('--normalize_feature', type=str2bool, default=False)
 net_arg.add_argument('--dist_type', type=str, default='L2')
-net_arg.add_argument('--best_val_metric', type=str,default='loss')#'feat_match_ratio')
+net_arg.add_argument('--best_val_metric', type=str, default='feat_match_ratio')
 
 # Optimizer arguments
 opt_arg = add_argument_group('Optimizer')
@@ -81,7 +84,8 @@ opt_arg.add_argument('--sgd_dampening', type=float, default=0.1)
 opt_arg.add_argument('--adam_beta1', type=float, default=0.9)
 opt_arg.add_argument('--adam_beta2', type=float, default=0.999)
 opt_arg.add_argument('--weight_decay', type=float, default=1e-4)
-opt_arg.add_argument('--iter_size', type=int, default=1, help='accumulate gradient')
+opt_arg.add_argument('--iter_size', type=int, default=1,
+                     help='accumulate gradient')
 opt_arg.add_argument('--bn_momentum', type=float, default=0.05)
 opt_arg.add_argument('--exp_gamma', type=float, default=0.99)
 opt_arg.add_argument('--scheduler', type=str, default='ExpLR')
@@ -94,9 +98,9 @@ misc_arg.add_argument('--weights', type=str, default="2019-07-31_19-37-00.pth")
 misc_arg.add_argument('--weights_dir', type=str, default=None)
 misc_arg.add_argument('--resume', type=str, default=None)
 misc_arg.add_argument('--resume_dir', type=str, default=None)
-misc_arg.add_argument('--train_num_thread', type=int, default=4)#2)
+misc_arg.add_argument('--train_num_thread', type=int, default=4)  # 2)
 misc_arg.add_argument('--val_num_thread', type=int, default=4)
-misc_arg.add_argument('--test_num_thread', type=int, default=4)#2)
+misc_arg.add_argument('--test_num_thread', type=int, default=4)  # 2)
 misc_arg.add_argument('--fast_validation', type=str2bool, default=False)
 misc_arg.add_argument(
     '--nn_max_n',
@@ -122,18 +126,16 @@ data_arg.add_argument(
 data_arg.add_argument('--kitti_date', type=str, default='2011_09_26')
 
 
-#arguments for KITTI map dataset
-#for kitti ground truth poses (optimized by loop-closing SLAM)
+# arguments for KITTI map dataset
+# for kitti ground truth poses (optimized by loop-closing SLAM)
 data_arg.add_argument(
-    '--path_cmrdata', type=str, default="/home/allie/dataset/cmr_original") 
+    '--path_cmrdata', type=str, default="/home/allie/dataset/cmr_original")
 data_arg.add_argument(
-    '--depth_max', type=float, default=50) 
+    '--depth_max', type=float, default=50)
 data_arg.add_argument(
-    '--num_min_map_points', type=int, default=2e4) 
-
-
+    '--num_min_map_points', type=int, default=2e4)
 
 
 def get_config():
-  args = parser.parse_args()
-  return args
+    args = parser.parse_args()
+    return args
