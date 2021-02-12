@@ -785,6 +785,7 @@ class KITTIMapDataset(PairwiseDataset):  # PairwiseDataset from the benchmark co
 
         import copy
         if self.split != "test":
+
             T0 = sample_random_trans(xyz0, self.randg, np.pi / 4)
             T1 = sample_random_trans(xyz1_align, self.randg, np.pi / 4)
             trans = T1 @ np.linalg.inv(T0)
@@ -799,7 +800,6 @@ class KITTIMapDataset(PairwiseDataset):  # PairwiseDataset from the benchmark co
             xyz0 / self.voxel_size, return_index=True)[1]
         sel1 = ME.utils.sparse_quantize(
             xyz1 / self.voxel_size, return_index=True)[1]
-
         #pcd0_trans = make_open3d_point_cloud(xyz0[sel0])
 #
         # pcd0_trans.transform(trans_global)
@@ -848,7 +848,7 @@ class KITTIMapDataset(PairwiseDataset):  # PairwiseDataset from the benchmark co
         # print(coords0.shape)
         # print(coords1.shape)
 
-        if False:  # len(matches) < 300:#idx == 113:#len(matches) <
+        if len(matches) < 300:  # idx == 113:#len(matches) <
          # 10:#coords0.shape[0] <
             # 10 or
             # coords1.shape
