@@ -10,7 +10,7 @@ export MODEL_N_OUT=${MODEL_N_OUT:-32}
 export OPTIMIZER=${OPTIMIZER:-SGD}
 export LR=${LR:-1e-1}
 export MAX_EPOCH=${MAX_EPOCH:-200}
-export BATCH_SIZE=${BATCH_SIZE:-2}
+export BATCH_SIZE=${BATCH_SIZE:-1}
 export ITER_SIZE=${ITER_SIZE:-1}
 export VOXEL_SIZE=${VOXEL_SIZE:-0.3}
 export POSITIVE_PAIR_SEARCH_VOXEL_SIZE_MULTIPLIER=${POSITIVE_PAIR_SEARCH_VOXEL_SIZE_MULTIPLIER:-0.5} 
@@ -31,15 +31,15 @@ mkdir -m 755 -p $OUT_DIR
 
 LOG=${OUT_DIR}/log_${TIME}.txt
 
-echo "Host: " $(hostname) | tee -a $LOG
-echo "Conda " $(which conda) | tee -a $LOG
-echo $(pwd) | tee -a $LOG
-echo "Version: " $VERSION | tee -a $LOG
-echo "Git diff" | tee -a $LOG
-echo "" | tee -a $LOG
-git diff | tee -a $LOG
-echo "" | tee -a $LOG
-nvidia-smi | tee -a $LOG
+#echo "Host: " $(hostname) | tee -a $LOG
+#echo "Conda " $(which conda) | tee -a $LOG
+#echo $(pwd) | tee -a $LOG
+#echo "Version: " $VERSION | tee -a $LOG
+#echo "Git diff" | tee -a $LOG
+#echo "" | tee -a $LOG
+#git diff | tee -a $LOG
+#echo "" | tee -a $LOG
+#nvidia-smi | tee -a $LOG
 
 # Training
 python train.py \
