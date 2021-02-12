@@ -801,25 +801,19 @@ class KITTIMapDataset(PairwiseDataset):  # PairwiseDataset from the benchmark co
         sel1 = ME.utils.sparse_quantize(
             xyz1 / self.voxel_size, return_index=True)[1]
 
-        num0 = (sel0.shape[0] // 32) * 32
-        num1 = (sel1.shape[0] // 32) * 32
+        unique_xyz0_th = xyz0[sel0]  # [ind_0]
+        unique_xyz1_th = xyz1[sel1]  # [ind_1]
 
-        sel0 = sel0[:num0]
-        sel1 = sel1[:num1]
-
-        pcd0 = make_open3d_point_cloud(xyz0[sel0])
-        pcd1 = make_open3d_point_cloud(xyz1[sel1])
+        pcd0 = make_open3d_point_cloud(unique_xyz0_th)
+        pcd1 = make_open3d_point_cloud(unique_xyz1_th)
 
         # Get matches
         matches = get_matching_indices(
             pcd0, pcd1, trans, matching_search_voxel_size)
 
         # Get features
-
         feats_train0, feats_train1 = [], []
 
-        unique_xyz0_th = torch.Tensor(xyz0[sel0])  # [ind_0]
-        unique_xyz1_th = torch.Tensor(xyz1[sel1])  # [ind_1]
         npts0 = unique_xyz0_th.shape[0]
         npts1 = unique_xyz1_th.shape[0]
 
@@ -829,8 +823,8 @@ class KITTIMapDataset(PairwiseDataset):  # PairwiseDataset from the benchmark co
         feats0 = torch.cat(feats_train0, 1)
         feats1 = torch.cat(feats_train1, 1)
 
-        coords0 = torch.floor(unique_xyz0_th / self.voxel_size)
-        coords1 = torch.floor(unique_xyz1_th / self.voxel_size)
+        coords0 = np.floor(unique_xyz0_th / self.voxel_size)
+        coords1 = np.floor(unique_xyz1_th / self.voxel_size)
 
         #pcd0_align = make_open3d_point_cloud(unique_xyz0_th)
         # pcd0_align.transform(trans)
@@ -900,8 +894,8 @@ class KITTIMapDataset(PairwiseDataset):  # PairwiseDataset from the benchmark co
         # print(unique_xyz0_th.shape, unique_xyz1_th.shape, coords0.shape,
         #      coords1.shape,  feats0.shape, feats1.shape, len(matches),
         #      np.asarray(matches).max(axis=0))
-        return (unique_xyz0_th.float(), unique_xyz1_th.float(), coords0.int(),
-                coords1.int(), feats0.float(), feats1.float(), matches, trans)
+        return (unique_xyz0_th, unique_xyz1_th, coords0,
+                coords1, feats0.float(), feats1.float(), matches, trans)
 
     def _get_velodyne_fn(self, drive, t):
         if self.IS_ODOMETRY:
@@ -969,7 +963,7 @@ def make_data_loader(config, phase, batch_size, num_threads=0, shuffle=None):
     loader = torch.utils.data.DataLoader(
         dset,
         batch_size=batch_size,
-        shuffle=True,  # shuffle
+        shuffle=shuffle,
         num_workers=num_threads,
         collate_fn=collate_pair_fn,
         pin_memory=False,

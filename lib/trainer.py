@@ -550,6 +550,8 @@ class HardestContrastiveLossTrainer(ContrastiveLossTrainer):
                 if (F1.shape[0] != input_dict['sinput1_F'].shape[0]) or (F0.shape[0] != input_dict['sinput0_F'].shape[0]):
                     # weird bug! Somehow the input/output sizes are inconsistent
                     # for some samples
+                    import pdb
+                    pdb.set_trace()
                     print("Size inconsistency! Skip this sample...")
                     continue
                 pos_loss, neg_loss = self.contrastive_hardest_negative_loss(
