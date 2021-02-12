@@ -765,8 +765,7 @@ class KITTIMapDataset(PairwiseDataset):  # PairwiseDataset from the benchmark co
         xyz1 = self.get_local_map(
             self.data["T_map"][idx], self.data["T_map"][idx], str(drive))
         # .to(self.config.device)# # M2
-        trans_global = torch.Tensor(
-            np.linalg.inv(self.data["T_map"][idx])).float()
+        trans_global = np.linalg.inv(self.data["T_map"][idx])
 
         matching_search_voxel_size = self.matching_search_voxel_size
         # if self.random_scale and random.random() < 0.95:
@@ -777,9 +776,9 @@ class KITTIMapDataset(PairwiseDataset):  # PairwiseDataset from the benchmark co
         #    xyz1 = scale * xyz1
 #
         # Voxelization
-        xyz0 = torch.from_numpy(xyz0).float()  # xyz0#torch.from_numpy(xyz0)
-        xyz1_align = torch.from_numpy(xyz1).float()
-        xyz1_align = self.apply_transform(xyz1_align, trans_global)
+        # xyz0 = torch.from_numpy(xyz0).float()  # xyz0#torch.from_numpy(xyz0)
+        #xyz1_align = torch.from_numpy(xyz1).float()
+        xyz1_align = self.apply_transform(xyz1, trans_global)
         # Make point clouds using voxelized points
         #pcd0 = make_open3d_point_cloud(xyz0[sel0])
         #pcd1 = make_open3d_point_cloud(xyz1[sel1])
@@ -793,7 +792,7 @@ class KITTIMapDataset(PairwiseDataset):  # PairwiseDataset from the benchmark co
             xyz0 = self.apply_transform(xyz0, T0)
             xyz1 = self.apply_transform(xyz1_align, T1)
         else:
-            trans = self.list_T_gt[idx].float()
+            trans = self.list_T_gt[idx].numpy()
             xyz1 = self.apply_transform(xyz1_align, trans)
 
         sel0 = ME.utils.sparse_quantize(
@@ -831,8 +830,8 @@ class KITTIMapDataset(PairwiseDataset):  # PairwiseDataset from the benchmark co
 
         feats_train0, feats_train1 = [], []
 
-        unique_xyz0_th = xyz0[sel0]  # [ind_0]
-        unique_xyz1_th = xyz1[sel1]  # [ind_1]
+        unique_xyz0_th = torch.Tensor(xyz0[sel0])  # [ind_0]
+        unique_xyz1_th = torch.Tensor(xyz1[sel1])  # [ind_1]
         npts0 = unique_xyz0_th.shape[0]
         npts1 = unique_xyz1_th.shape[0]
 
@@ -1217,7 +1216,7 @@ def make_data_loader(config, phase, batch_size, num_threads=0, shuffle=None):
         dset,
         batch_size=batch_size,
         shuffle=shuffle,
-        num_workers=num_threads,
+        num_workers=1,  # num_threads,
         collate_fn=collate_pair_fn,
         pin_memory=False,
         drop_last=True)
