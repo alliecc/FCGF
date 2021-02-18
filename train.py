@@ -40,14 +40,14 @@ def get_trainer(trainer):
 def main(config, resume=False):
     train_loader = make_data_loader(
         config,
-        config.train_phase,
+        "test",
         config.batch_size,
         num_threads=config.train_num_thread)
 
     if config.test_valid:
         val_loader = make_data_loader(
             config,
-            config.val_phase,
+            "test",
             config.val_batch_size,
             num_threads=config.val_num_thread)
     else:

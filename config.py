@@ -94,13 +94,14 @@ opt_arg.add_argument(
 
 misc_arg = add_argument_group('Misc')
 misc_arg.add_argument('--use_gpu', type=str2bool, default=True)
-misc_arg.add_argument('--weights', type=str, default="2019-07-31_19-37-00.pth")
+misc_arg.add_argument('--weights', type=str,
+                      default="outputs/Experiments/KITTIMapDataset-v0.3/HardestContrastiveLossTrainer/ResUNetBN2C/SGD-lr1e-1-e200-b2i1-modelnout32/2021-02-11_22-35-59/best_val_checkpoint.pth")
 misc_arg.add_argument('--weights_dir', type=str, default=None)
 misc_arg.add_argument('--resume', type=str, default=None)
 misc_arg.add_argument('--resume_dir', type=str, default=None)
-misc_arg.add_argument('--train_num_thread', type=int, default=4)  # 2)
-misc_arg.add_argument('--val_num_thread', type=int, default=4)
-misc_arg.add_argument('--test_num_thread', type=int, default=4)  # 2)
+misc_arg.add_argument('--train_num_thread', type=int, default=1)  # 2)
+misc_arg.add_argument('--val_num_thread', type=int, default=1)
+misc_arg.add_argument('--test_num_thread', type=int, default=1)  # 2)
 misc_arg.add_argument('--fast_validation', type=str2bool, default=False)
 misc_arg.add_argument(
     '--nn_max_n',
