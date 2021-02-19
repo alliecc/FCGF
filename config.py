@@ -94,8 +94,7 @@ opt_arg.add_argument(
 
 misc_arg = add_argument_group('Misc')
 misc_arg.add_argument('--use_gpu', type=str2bool, default=True)
-misc_arg.add_argument('--weights', type=str,
-                      default="outputs/Experiments/KITTIMapDataset-v0.3/HardestContrastiveLossTrainer/ResUNetBN2C/SGD-lr1e-1-e200-b2i1-modelnout32/2021-02-11_22-35-59/best_val_checkpoint.pth")
+misc_arg.add_argument('--weights', type=str, default=None)#"outputs/Experiments/KITTIMapDataset-v0.3/HardestContrastiveLossTrainer/ResUNetBN2C/SGD-lr1e-1-e200-b2i1-modelnout32/2021-02-11_22-35-59/best_val_checkpoint.pth")
 misc_arg.add_argument('--weights_dir', type=str, default=None)
 misc_arg.add_argument('--resume', type=str, default=None)
 misc_arg.add_argument('--resume_dir', type=str, default=None)

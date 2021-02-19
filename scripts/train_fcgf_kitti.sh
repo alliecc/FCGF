@@ -42,24 +42,24 @@ LOG=${OUT_DIR}/log_${TIME}.txt
 #nvidia-smi | tee -a $LOG
 
 # Training
-#python train.py \
-#	--dataset ${DATASET} \
-#	--trainer ${TRAINER} \
-#	--model ${MODEL} \
-#	--model_n_out ${MODEL_N_OUT} \
-#	--conv1_kernel_size ${CONV1_KERNEL_SIZE} \
-#	--optimizer ${OPTIMIZER} \
-#	--lr ${LR} \
-#	--batch_size ${BATCH_SIZE} \
-#	--iter_size ${ITER_SIZE} \
-#	--max_epoch ${MAX_EPOCH} \
-#	--voxel_size ${VOXEL_SIZE} \
-#	--out_dir ${OUT_DIR} \
-#	--use_random_scale ${RANDOM_SCALE} \
-#	--positive_pair_search_voxel_size_multiplier ${POSITIVE_PAIR_SEARCH_VOXEL_SIZE_MULTIPLIER} \
-#	--kitti_root ${KITTI_PATH} \
-#	--hit_ratio_thresh 0.2 \
-#
+python train.py \
+	--dataset ${DATASET} \
+	--trainer ${TRAINER} \
+	--model ${MODEL} \
+	--model_n_out ${MODEL_N_OUT} \
+	--conv1_kernel_size ${CONV1_KERNEL_SIZE} \
+	--optimizer ${OPTIMIZER} \
+	--lr ${LR} \
+	--batch_size ${BATCH_SIZE} \
+	--iter_size ${ITER_SIZE} \
+	--max_epoch ${MAX_EPOCH} \
+	--voxel_size ${VOXEL_SIZE} \
+	--out_dir ${OUT_DIR} \
+	--use_random_scale ${RANDOM_SCALE} \
+	--positive_pair_search_voxel_size_multiplier ${POSITIVE_PAIR_SEARCH_VOXEL_SIZE_MULTIPLIER} \
+	--kitti_root ${KITTI_PATH} \
+	--hit_ratio_thresh 0.2 \
+
 #	$MISC_ARGS 2>&1 | tee -a $LOG
 
 # Test
