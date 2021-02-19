@@ -63,6 +63,6 @@ python train.py \
 #	$MISC_ARGS 2>&1 | tee -a $LOG
 
 # Test
-python -m scripts.test_kitti_save_results \
-	--kitti_root ${KITTI_PATH} \
-	--save_dir "outputs/Experiments/KITTIMapDataset-v0.3/HardestContrastiveLossTrainer/ResUNetBN2C/SGD-lr1e-1-e200-b2i1-modelnout32/2021-02-11_22-35-59"
+#python -m scripts.test_kitti_save_results \
+#	--kitti_root ${KITTI_PATH} \
+#	--save_dir "outputs/Experiments/KITTIMapDataset-v0.3/HardestContrastiveLossTrainer/ResUNetBN2C/SGD-lr1e-1-e200-b2i1-modelnout32/2021-02-11_22-35-59"

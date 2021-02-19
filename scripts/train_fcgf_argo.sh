@@ -13,7 +13,7 @@ export MAX_EPOCH=${MAX_EPOCH:-200}
 export BATCH_SIZE=${BATCH_SIZE:-1}
 export ITER_SIZE=${ITER_SIZE:-1}
 export VOXEL_SIZE=${VOXEL_SIZE:-0.3}
-export POSITIVE_PAIR_SEARCH_VOXEL_SIZE_MULTIPLIER=${POSITIVE_PAIR_SEARCH_VOXEL_SIZE_MULTIPLIER:-0.3} 
+export POSITIVE_PAIR_SEARCH_VOXEL_SIZE_MULTIPLIER=${POSITIVE_PAIR_SEARCH_VOXEL_SIZE_MULTIPLIER:-0.5} 
 export CONV1_KERNEL_SIZE=${CONV1_KERNEL_SIZE:-7}
 export EXP_GAMMA=${EXP_GAMMA:-0.99}
 export RANDOM_SCALE=${RANDOM_SCALE:-False} #scale doesn't work for the local map
@@ -58,7 +58,7 @@ python train.py \
 	--use_random_scale ${RANDOM_SCALE} \
 	--positive_pair_search_voxel_size_multiplier ${POSITIVE_PAIR_SEARCH_VOXEL_SIZE_MULTIPLIER} \
 	--kitti_root ${ARGO_PATH} \
-	--hit_ratio_thresh 0.2 \
+	--hit_ratio_thresh 0.2 
 
 	$MISC_ARGS 2>&1 | tee -a $LOG
 

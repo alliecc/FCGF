@@ -771,51 +771,10 @@ class KITTIMapDataset(PairwiseDataset):  # PairwiseDataset from the benchmark co
         xyz0 = sample["source"].points
         xyz1 = sample["target"].points
         
-        
         trans = torch.Tensor(self.data["T_map"][idx])
-
-
-        #drive = self.data["id_log"][idx]
-        #t0, t1 = self.files[self.split][idx][1], self.files[self.split][idx][2]
-
-        # LiDAR is the target
-
-        #xyz0 = self.load_kitti_scan(idx)
-        ## map is the source
-        #xyz1_global = self.get_local_map(
-        #    self.data["T_map"][idx], self.data["T_map"][idx], str(drive))
-        # .to(self.config.device)# # M2
-        #trans_global = np.linalg.inv(self.data["T_map"][idx])
-
         matching_search_voxel_size = self.matching_search_voxel_size
-        # if self.random_scale and random.random() < 0.95:
-        #    scale = self.min_scale + \
-        #        (self.max_scale - self.min_scale) * random.random()
-        #    matching_search_voxel_size *= scale
-        #    xyz0 = scale * xyz0
-        #    xyz1 = scale * xyz1
-#
-        # Voxelization
-        # xyz0 = torch.from_numpy(xyz0).float()  # xyz0#torch.from_numpy(xyz0)
-        #xyz1_align = torch.from_numpy(xyz1).float()
-        #xyz1_align = self.apply_transform(xyz1_global, trans_global)
-        # Make point clouds using voxelized points
-        #pcd0 = make_open3d_point_cloud(xyz0[sel0])
-        #pcd1 = make_open3d_point_cloud(xyz1[sel1])
 
         import copy
-        #if self.split != "test":
-#
-        #    T0 = sample_random_trans(xyz0, self.randg, np.pi / 4)
-        #    T1 = sample_random_trans(xyz1_align, self.randg, np.pi / 4)
-        #    trans = T1 @ np.linalg.inv(T0)
-#
-        #    xyz0 = self.apply_transform(xyz0, T0)
-        #    xyz1 = self.apply_transform(xyz1_align, T1)
-        #else:
-        #    trans = self.list_T_gt[idx].numpy()
-        #    xyz1 = self.apply_transform(xyz1_align, trans)
-#
         sel0 = ME.utils.sparse_quantize(
             xyz0.contiguous() / self.voxel_size, return_index=True)[1]
         sel1 = ME.utils.sparse_quantize(
@@ -846,16 +805,6 @@ class KITTIMapDataset(PairwiseDataset):  # PairwiseDataset from the benchmark co
         coords0 = np.floor(unique_xyz0_th / self.voxel_size)
         coords1 = np.floor(unique_xyz1_th / self.voxel_size)
 
-        #pcd0_align = make_open3d_point_cloud(unique_xyz0_th)
-        # pcd0_align.transform(trans)
-#
-        #print(np.asarray(pcd0_align.points)[np.asarray(matches)[:, 0]])
-#
-        #print(unique_xyz1_th[np.asarray(matches)[:, 1]])
-
-        #print("single batch = ")
-        # print(coords0.shape)
-        # print(coords1.shape)
 
         if len(matches) < 300:  # idx == 113:#len(matches) <
          # 10:#coords0.shape[0] <
@@ -898,22 +847,11 @@ class KITTIMapDataset(PairwiseDataset):  # PairwiseDataset from the benchmark co
 
             import pdb
             pdb.set_trace()
-            #pcd_target = o3d.geometry.PointCloud()
-            #pcd_target.points = o3d.utility.Vector3dVector(coords0)
-            #o3d.io.write_point_cloud("coords0.ply" , pcd_target)
-#
-            #pcd_target = o3d.geometry.PointCloud()
-            #pcd_target.points = o3d.utility.Vector3dVector(coords1)
-            #o3d.io.write_point_cloud("coords1.ply" , pcd_target)
 
         if self.transform:  # add noises to the point clouds
             coords0, feats0 = self.transform(coords0, feats0)
             coords1, feats1 = self.transform(coords1, feats1)
 
-        #print("****get_item", idx)
-        # print(unique_xyz0_th.shape, unique_xyz1_th.shape, coords0.shape,
-        #      coords1.shape,  feats0.shape, feats1.shape, len(matches),
-        #      np.asarray(matches).max(axis=0))
         return (unique_xyz0_th, unique_xyz1_th, coords0,
                 coords1, feats0.float(), feats1.float(), matches, trans)
 
@@ -952,7 +890,7 @@ class ArgoverseMapDataset(ArgoverseTrackingDataset):  # PairwiseDataset from the
                  random_scale=True,
                  manual_seed=False,
                  config=None):
-        super().__init__(split, cfg, )
+        #super().__init__(split, cfg, )
         
         self.phase = phase
         self.files = []
@@ -980,6 +918,28 @@ class ArgoverseMapDataset(ArgoverseTrackingDataset):  # PairwiseDataset from the
             root, "argo_map_files_d3feat_%s_fcgf.pkl" % self.split)
         # self.read_map_data()
         # self.prepare_kitti_ply()#split=split)
+
+        from argoverse.data_loading.argoverse_tracking_loader import ArgoverseTrackingLoader
+        self.name = "argoverse_tracking"
+        self.cfg = cfg
+        self.split = split
+        self.transform_map = True
+        if split == "train":
+            self.list_id_log = np.load(os.path.join(
+                self.cfg.path_dataset, 'argoverse-tracking', 'train_ids.npy'))
+            list_folders = ["train1", "train2", "train3", "train4"]
+        elif split == "test":
+            self.list_id_log = np.load(os.path.join(
+                self.cfg.path_dataset, 'argoverse-tracking', 'test_ids.npy'))
+            list_folders = ["test"]
+
+        self.dict_tracking_data_loader = {}
+        for name_folder in list_folders:
+            self.dict_tracking_data_loader[name_folder] = ArgoverseTrackingLoader(
+                os.path.join(self.cfg.path_dataset, 'argoverse-tracking', name_folder))
+
+
+        self.transform_map = False
         self.read_data()
 
     def reset_seed(self, seed=0):
@@ -996,52 +956,27 @@ class ArgoverseMapDataset(ArgoverseTrackingDataset):  # PairwiseDataset from the
         return self.length
 
     def __getitem__(self, idx):  # split, idx):
-        drive = self.data["id_log"][idx]
-        #t0, t1 = self.files[self.split][idx][1], self.files[self.split][idx][2]
-
-        # LiDAR is the target
         
+        if self.split == "test":
+            sample =  self.list_test_sample[idx]
 
-        xyz0 = self.load_argo_scan_from_path(self.data["path_raw_points"][idx])
-        # map is the source
-        xyz1_global = self.get_local_map(
-            self.data["T_map"][idx], self.data["T_map"][idx], str(drive))
-        # .to(self.config.device)# # M2
-        trans_global = np.linalg.inv(self.data["T_map"][idx])
+        else:
+            T_noise = self.generate_noise_T()
+            sample =   self.get_sample(idx, T_noise)
+
+        xyz0 = sample["source"].points
+        xyz1 = sample["target"].points
+        
+        trans = torch.Tensor(self.data["T_map"][idx])
 
         matching_search_voxel_size = self.matching_search_voxel_size
-        # if self.random_scale and random.random() < 0.95:
-        #    scale = self.min_scale + \
-        #        (self.max_scale - self.min_scale) * random.random()
-        #    matching_search_voxel_size *= scale
-        #    xyz0 = scale * xyz0
-        #    xyz1 = scale * xyz1
-#
-        # Voxelization
-        # xyz0 = torch.from_numpy(xyz0).float()  # xyz0#torch.from_numpy(xyz0)
-        #xyz1_align = torch.from_numpy(xyz1).float()
-        xyz1_align = self.apply_transform(xyz1_global, trans_global)
-        # Make point clouds using voxelized points
-        #pcd0 = make_open3d_point_cloud(xyz0[sel0])
-        #pcd1 = make_open3d_point_cloud(xyz1[sel1])
 
         import copy
-        if self.split != "test":
-
-            T0 = sample_random_trans(xyz0, self.randg, np.pi / 4)
-            T1 = sample_random_trans(xyz1_align, self.randg, np.pi / 4)
-            trans = T1 @ np.linalg.inv(T0)
-
-            xyz0 = self.apply_transform(xyz0, T0)
-            xyz1 = self.apply_transform(xyz1_align, T1)
-        else:
-            trans = self.list_T_gt[idx].numpy()
-            xyz1 = self.apply_transform(xyz1_align, trans)
-
+#
         sel0 = ME.utils.sparse_quantize(
-            xyz0 / self.voxel_size, return_index=True)[1]
+            xyz0.contiguous() / self.voxel_size, return_index=True)[1]
         sel1 = ME.utils.sparse_quantize(
-            xyz1 / self.voxel_size, return_index=True)[1]
+            xyz1.contiguous() / self.voxel_size, return_index=True)[1]
 
         unique_xyz0_th = xyz0[sel0]  # [ind_0]
         unique_xyz1_th = xyz1[sel1]  # [ind_1]
@@ -1068,26 +1003,9 @@ class ArgoverseMapDataset(ArgoverseTrackingDataset):  # PairwiseDataset from the
         coords0 = np.floor(unique_xyz0_th / self.voxel_size)
         coords1 = np.floor(unique_xyz1_th / self.voxel_size)
 
-        #pcd0_align = make_open3d_point_cloud(unique_xyz0_th)
-        # pcd0_align.transform(trans)
-#
-        #print(np.asarray(pcd0_align.points)[np.asarray(matches)[:, 0]])
-#
-        #print(unique_xyz1_th[np.asarray(matches)[:, 1]])
-
-        #print("single batch = ")
-        # print(coords0.shape)
-        # print(coords1.shape)
-
         if False:#len(matches) < 300:  # idx == 113:#len(matches) <
-         # 10:#coords0.shape[0] <
-            # 10 or
-            # coords1.shape
-            # [0]
-            # <
-            # 10:
+
             print("num matches = ", len(matches))
-            #print("matches shape = ", matches.shape)
 
             print(coords0)
 #
@@ -1120,22 +1038,11 @@ class ArgoverseMapDataset(ArgoverseTrackingDataset):  # PairwiseDataset from the
 
             import pdb
             pdb.set_trace()
-            #pcd_target = o3d.geometry.PointCloud()
-            #pcd_target.points = o3d.utility.Vector3dVector(coords0)
-            #o3d.io.write_point_cloud("coords0.ply" , pcd_target)
-#
-            #pcd_target = o3d.geometry.PointCloud()
-            #pcd_target.points = o3d.utility.Vector3dVector(coords1)
-            #o3d.io.write_point_cloud("coords1.ply" , pcd_target)
 
-        if self.transform:  # add noises to the point clouds
-            coords0, feats0 = self.transform(coords0, feats0)
-            coords1, feats1 = self.transform(coords1, feats1)
+        #if self.transform:  # add noises to the point clouds
+        #    coords0, feats0 = self.transform(coords0, feats0)
+        #    coords1, feats1 = self.transform(coords1, feats1)
 
-        #print("****get_item", idx)
-        # print(unique_xyz0_th.shape, unique_xyz1_th.shape, coords0.shape,
-        #      coords1.shape,  feats0.shape, feats1.shape, len(matches),
-        #      np.asarray(matches).max(axis=0))
         return (unique_xyz0_th, unique_xyz1_th, coords0,
                 coords1, feats0.float(), feats1.float(), matches, trans)
 
