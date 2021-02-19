@@ -764,9 +764,9 @@ class KITTIMapDataset(PairwiseDataset):  # PairwiseDataset from the benchmark co
             T_noise = self.generate_noise_T()
             sample =   self.get_sample(idx, T_noise)
 
-            if sample["target"].points.shape[0]<2000:
-                T_noise = self.generate_noise_T()
-                sample =   self.get_sample(idx, T_noise)
+            #if sample["target"].points.shape[0]<2000:
+            #    T_noise = self.generate_noise_T()
+            #    sample =   self.get_sample(idx, T_noise)
 
         xyz0 = sample["source"].points
         xyz1 = sample["target"].points
@@ -1003,13 +1003,12 @@ class ArgoverseMapDataset(ArgoverseTrackingDataset):  # PairwiseDataset from the
         coords0 = np.floor(unique_xyz0_th / self.voxel_size)
         coords1 = np.floor(unique_xyz1_th / self.voxel_size)
 
+        #coords0_mean = coords0.min(axis=0).int()
+        #coords0 -=coords0_mean 
+
         if False:#len(matches) < 300:  # idx == 113:#len(matches) <
-
             print("num matches = ", len(matches))
-
             print(coords0)
-#
-#
             pcd_target = o3d.geometry.PointCloud()
             pcd_target.points = o3d.utility.Vector3dVector(coords0)
             o3d.io.write_point_cloud("coords0_before_%d.ply" % idx, pcd_target)
@@ -1120,6 +1119,7 @@ def make_data_loader(config, phase, batch_size, num_threads=0, shuffle=None):
             random_rotation=use_random_rotation,
             config=config)
 
+    
     loader = torch.utils.data.DataLoader(
         dset,
         batch_size=batch_size,

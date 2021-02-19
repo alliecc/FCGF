@@ -58,7 +58,8 @@ python train.py \
 	--use_random_scale ${RANDOM_SCALE} \
 	--positive_pair_search_voxel_size_multiplier ${POSITIVE_PAIR_SEARCH_VOXEL_SIZE_MULTIPLIER} \
 	--kitti_root ${ARGO_PATH} \
-	--hit_ratio_thresh 0.2 
+	--hit_ratio_thresh 0.2 \
+	--nn_max_n  100 #otherwise the gpu memory of my laptop is not enough
 
 	$MISC_ARGS 2>&1 | tee -a $LOG
 

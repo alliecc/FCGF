@@ -40,7 +40,7 @@ def get_trainer(trainer):
 def main(config, resume=False):
     train_loader = make_data_loader(
         config,
-        "test",
+        "train",
         config.batch_size,
         num_threads=config.train_num_thread)
 

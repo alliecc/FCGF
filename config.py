@@ -105,7 +105,7 @@ misc_arg.add_argument('--fast_validation', type=str2bool, default=False)
 misc_arg.add_argument(
     '--nn_max_n',
     type=int,
-    default=150,#it was 500
+    default=500,#it was 500
     help='The maximum number of features to find nearest neighbors in batch')
 
 # Dataset specific configurations
