@@ -36,7 +36,7 @@ LOG=${OUT_DIR}/log_${TIME}.txt
 #echo $(pwd) | tee -a $LOG
 #echo "Version: " $VERSION | tee -a $LOG
 #echo "Git diff" | tee -a $LOG
-#echo "" | tee -a $LOG
+#echo "" | tee -a $LOGls
 #git diff | tee -a $LOG
 #echo "" | tee -a $LOG
 #nvidia-smi | tee -a $LOG
@@ -58,8 +58,9 @@ python train.py \
 	--use_random_scale ${RANDOM_SCALE} \
 	--positive_pair_search_voxel_size_multiplier ${POSITIVE_PAIR_SEARCH_VOXEL_SIZE_MULTIPLIER} \
 	--kitti_root ${KITTI_PATH} \
-	--hit_ratio_thresh 0.2 \
-
+	--hit_ratio_thresh 0.3 #0.2 
+#--weights outputs/Experiments/KITTIMapDataset-v0.3/HardestContrastiveLossTrainer/ResUNetBN2C/SGD-lr1e-1-e200-b2i1-modelnout32/2021-02-18_23-22-22/checkpoint.pth \
+	
 #	$MISC_ARGS 2>&1 | tee -a $LOG
 
 # Test

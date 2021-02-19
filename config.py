@@ -98,9 +98,9 @@ misc_arg.add_argument('--weights', type=str,default="2019-07-31_19-37-00.pth")#"
 misc_arg.add_argument('--weights_dir', type=str, default=None)
 misc_arg.add_argument('--resume', type=str, default=None)
 misc_arg.add_argument('--resume_dir', type=str, default=None)
-misc_arg.add_argument('--train_num_thread', type=int, default=1)  # 2)
-misc_arg.add_argument('--val_num_thread', type=int, default=1)
-misc_arg.add_argument('--test_num_thread', type=int, default=1)  # 2)
+misc_arg.add_argument('--train_num_thread', type=int, default=8)  # 2)
+misc_arg.add_argument('--val_num_thread', type=int, default=8)
+misc_arg.add_argument('--test_num_thread', type=int, default=8)  # 2)
 misc_arg.add_argument('--fast_validation', type=str2bool, default=False)
 misc_arg.add_argument(
     '--nn_max_n',

@@ -341,8 +341,7 @@ class ContrastiveLossTrainer(AlignmentTrainer):
 
             matching_timer.tic()
             xyz0, xyz1, T_gt = input_dict['pcd0'], input_dict['pcd1'], input_dict['T_gt']
-            xyz0_corr, xyz1_corr = self.find_corr(
-                xyz0, xyz1, F0, F1, subsample_size=5000)
+            xyz0_corr, xyz1_corr = self.find_corr(xyz0, xyz1, F0, F1, subsample_size=5000)
 
             if False:
 
@@ -353,8 +352,7 @@ class ContrastiveLossTrainer(AlignmentTrainer):
                 pc0.points = o3d.utility.Vector3dVector(xyz0.numpy())
                 pca = PCA(n_components=3)
 
-                colors = pca.fit_transform(
-                    torch.cat((F0, F1), axis=0).cpu().numpy())
+                colors = pca.fit_transform(torch.cat((F0, F1), axis=0).cpu().numpy())
                 colors -= colors.min()
                 colors /= colors.max()
                 pc0.colors = o3d.utility.Vector3dVector(colors[0:F0.shape[0]])
@@ -377,8 +375,7 @@ class ContrastiveLossTrainer(AlignmentTrainer):
                 o3d.io.write_point_cloud("pc1_corr.ply", pc1)
 
                 pc0.points = o3d.utility.Vector3dVector(xyz0[ind_0].numpy())
-                pc0.colors = o3d.utility.Vector3dVector(
-                    colors[:F0.shape[0]][ind_0])
+                pc0.colors = o3d.utility.Vector3dVector(colors[:F0.shape[0]][ind_0])
                 pc0.transform(T_gt.numpy())
                 o3d.io.write_point_cloud("pc0_trans_corr.ply", pc0)
                 import pdb
@@ -402,8 +399,7 @@ class ContrastiveLossTrainer(AlignmentTrainer):
             if not np.isnan(rre):
                 rre_meter.update(rre)
 
-            hit_ratio = self.evaluate_hit_ratio(
-                xyz0_corr, xyz1_corr, T_gt, thresh=self.config.hit_ratio_thresh)
+            hit_ratio = self.evaluate_hit_ratio(xyz0_corr, xyz1_corr, T_gt, thresh=self.config.hit_ratio_thresh)
             hit_ratio_meter.update(hit_ratio)
             feat_match_ratio.update(hit_ratio > 0.05)
             matching_timer.toc()
